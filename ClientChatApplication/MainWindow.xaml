@@ -1,0 +1,49 @@
+﻿<Window x:Class="ClientChatApplication.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ClientChatApplication"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="450" Width="800">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="auto"></RowDefinition>
+        </Grid.RowDefinitions>
+
+        <Label Grid.Row="0"
+               HorizontalAlignment="Center"
+               FontSize="30"
+               FontWeight="Bold"
+               Content="Client Chat Application">
+        </Label>
+
+        <ScrollViewer Name="scrollViewerChat" Grid.Row="1">
+            <TextBox Grid.Row="1"
+                     Name="txtBlockChatArea"
+                     Padding="20">
+            </TextBox>
+        </ScrollViewer>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+                <ColumnDefinition Width="auto"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+
+            <TextBox Grid.Column="0"
+                     BorderBrush="red"
+                     Name="txtBoxInputChat">
+            </TextBox>
+
+            <Button Grid.Column="1"
+                    Content="Enter Chat"
+                    FontWeight="DemiBold"
+                    FontSize="25" Click="Button_Click">
+            </Button>
+        </Grid>
+
+    </Grid>
+</Window>
