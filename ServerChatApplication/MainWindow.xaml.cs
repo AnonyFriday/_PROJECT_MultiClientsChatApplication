@@ -50,8 +50,8 @@ namespace ServerChatApplication
             // 2. Turn on Listening Mode
             // 2. Send <TURNOFF> mode to close the server connection
             serverSocket.Listen(NetworkingHelper.SERVER_BACKLOG);
-            PrintMsgToTextBox($"Listening on {NetworkingHelper.SERVER_IPADDRESS}:{NetworkingHelper.SERVER_PORT}");
-            PrintMsgToTextBox("Enter <SHUTDOWN> to shutdown chat server.");
+            PrintMsgToTextBox($"Listening on {NetworkingHelper.SERVER_IPADDRESS}:{NetworkingHelper.SERVER_PORT}", true);
+            PrintMsgToTextBox("Enter <SHUTDOWN> to shutdown chat server.", true);
 
             // 3. Create Cancellation Token
             cts = new CancellationTokenSource();
@@ -108,7 +108,7 @@ namespace ServerChatApplication
                     // Boardcasting to all client within the network
                     _ = BroadcastingMsgToClients(receivedText, clientSocket, token);
 
-                    PrintMsgToTextBox(receivedText, true);
+                    PrintMsgToTextBox(receivedText, false);
                 }
                 catch (OperationCanceledException ex) when (linkedCancellation.IsCancellationRequested)
                 {
@@ -126,8 +126,6 @@ namespace ServerChatApplication
         /// <exception cref="NotImplementedException"></exception>
         private async Task BroadcastingMsgToClients(string receivedText, Socket excludeClient, CancellationToken token)
         {
-            string formattedMsg = $"{excludeClient.RemoteEndPoint} - {receivedText}";
-
             foreach (var clientSocket in clientSockets)
             {
                 // Sending all exception for the client that sends the receivedText
@@ -135,7 +133,7 @@ namespace ServerChatApplication
                 {
                     NetworkStream networkStream = new NetworkStream(clientSocket);
                     StreamWriter writerStream = new StreamWriter(networkStream);
-                    await writerStream.WriteLineAsync(formattedMsg);
+                    await writerStream.WriteLineAsync(receivedText);
                     await writerStream.FlushAsync(token);
                     await networkStream.FlushAsync(token);
                 }
@@ -157,9 +155,11 @@ namespace ServerChatApplication
                 }
                 else
                 {
-                    txtBlockChatArea.Text += $"(Client): {msg}\n";
+                    txtBlockChatArea.Text += $"(CLIENT) {msg}\n";
                 }
             });
+
+            txtBoxInputChat.Clear();
         }
 
         /// <summary>
@@ -169,14 +169,14 @@ namespace ServerChatApplication
         /// <param name="e"></param>
         private async void Button_Click(object sender, RoutedEventArgs e)
         {
-            var text = txtBoxInputChat.Text;
+            string formattedMsg = $"{serverSocket.LocalEndPoint} - {txtBoxInputChat.Text}";
 
             try
             {
-                await BroadcastingMsgToClients(text, serverSocket, cts.Token);
+                await BroadcastingMsgToClients(formattedMsg, serverSocket, cts.Token);
 
                 // Print Msg into text box
-                PrintMsgToTextBox(text, true);
+                PrintMsgToTextBox(formattedMsg, true);
             }
 
             catch (SocketException ex)

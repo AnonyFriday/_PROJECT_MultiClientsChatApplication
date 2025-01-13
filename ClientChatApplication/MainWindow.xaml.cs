@@ -110,21 +110,21 @@ namespace ClientChatApplication
         /// <param name="e"></param>
         private async void Button_Click(object sender, RoutedEventArgs e)
         {
-            var text = txtBoxInputChat.Text;
-            var textInBytes = Encoding.UTF8.GetBytes(text);
+            string formattedMsg = $"{clientSocket.LocalEndPoint} - {txtBoxInputChat.Text}";
+            var textInBytes = Encoding.UTF8.GetBytes(formattedMsg);
 
             try
             {
                 await clientSocket.SendAsync(textInBytes);
 
                 // Send the <EXIT> prompt to server to disconnect client
-                if (text.Equals(NetworkingHelper.CHAT_PROMPT_EXIT))
+                if (txtBoxInputChat.Text.Equals(NetworkingHelper.CHAT_PROMPT_EXIT))
                 {
                     await clientSocket.SendAsync(Encoding.UTF8.GetBytes(NetworkingHelper.CHAT_PROMPT_EXIT));
                 }
 
                 // Print Msg into text box
-                PrintMsgToTextBox(text, true);
+                PrintMsgToTextBox(formattedMsg, true);
             }
 
             catch (SocketException ex)
@@ -148,13 +148,14 @@ namespace ClientChatApplication
             {
                 if (isCurrentClient)
                 {
-                    txtBlockChatArea.Text += $"(Current Client) {msg}\n";
+                    txtBlockChatArea.Text += $"(CURRENT CLIENT) {msg}\n";
                 }
                 else
                 {
-                    txtBlockChatArea.Text += $"(Client) {msg}\n";
+                    txtBlockChatArea.Text += $"(CLIENT) {msg}\n";
                 }
             });
+            txtBoxInputChat.Clear();
         }
     }
 }
