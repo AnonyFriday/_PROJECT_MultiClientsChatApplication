@@ -11,6 +11,10 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using ChatApplication.Helper;
+using Microsoft.Win32;
+using System.IO;
+using System.Reflection.PortableExecutable;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace ClientChatApplication
 {
@@ -68,7 +72,7 @@ namespace ClientChatApplication
         /// <returns></returns>
         private async Task ReceiveMessagesAsync(CancellationToken cancellationToken)
         {
-            var receiveBuffer = new byte[1024];
+            var receiveBuffer = new byte[4096];
 
             // Looping and wait for the response
             while (!cancellationToken.IsCancellationRequested)
@@ -83,7 +87,30 @@ namespace ClientChatApplication
                     else
                     {
                         string textReceived = Encoding.UTF8.GetString(receiveBuffer, 0, byteReceivedLen);
-                        PrintMsgToTextBox(textReceived, false);
+
+                        // check file
+                        if (textReceived.Contains("FILE:"))
+                        {
+
+                            // Parse header
+                            var parts = textReceived.Split(':');
+                            string fileName = parts[1];
+                            int fileSize = int.Parse(parts[2]);
+
+                            byte[] fileData = new byte[fileSize];
+                            int totalBytesReceived = 0;
+                            while (totalBytesReceived < fileSize)
+                            {
+                                int bytesReceived = await clientSocket.ReceiveAsync(fileData.AsMemory(totalBytesReceived));
+                                totalBytesReceived += bytesReceived;
+                            }
+
+                            PrintMsgToTextBox($"Received file: {fileName}", false, true, fileName, fileData);
+                        }
+                        else
+                        {
+                            PrintMsgToTextBox(textReceived, false);
+                        }
                     }
                 }
 
@@ -142,19 +169,82 @@ namespace ClientChatApplication
         /// </summary>
         /// <param name="msg"></param>
         /// <param name="isCurrentClient"></param>
-        private void PrintMsgToTextBox(string msg, bool isCurrentClient = false)
+        private void PrintMsgToTextBox(string msg, bool isCurrentClient = false, bool isFile = false, string fileName = null, byte[] fileData = null)
         {
             this.Dispatcher.Invoke(() =>
             {
-                if (isCurrentClient)
+                var msgContainer = new StackPanel
                 {
-                    txtBlockChatArea.Text += $"(Current Client) {msg}\n";
-                }
-                else
+                    Orientation = Orientation.Horizontal,
+                    Margin = new Thickness(5)
+                };
+
+                var lblMessage = new TextBlock
                 {
-                    txtBlockChatArea.Text += $"(Client) {msg}\n";
+                    Text = isCurrentClient ? $"(Current Client) {msg}" : $"(Client) {msg}",
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 10, 0)
+                };
+
+                msgContainer.Children.Add(lblMessage);
+
+                // If file, then add download button
+                if (isFile && !string.IsNullOrEmpty(fileName))
+                {
+                    var btnDownload = new Button
+                    {
+                        Content = "Download",
+                        Background = Brushes.LightBlue,
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+
+                    btnDownload.Click += (s, e) =>
+                    {
+                        string downloadsPath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+                        string tempFilePath = System.IO.Path.Combine(downloadsPath, fileName);
+                        File.WriteAllBytes(tempFilePath, fileData);
+                    };
+
+                    msgContainer.Children.Add(btnDownload);
                 }
+
+                // Add to main stackpanel
+                chatPanel.Children.Add(msgContainer);
             });
         }
-    }
+
+        private async void Button_AttachFile_Click(object sender, RoutedEventArgs e)
+        {
+            OpenFileDialog fileDialog = new OpenFileDialog();
+            fileDialog.ShowDialog();
+
+            string filePath = fileDialog.FileName;
+            string fileName = System.IO.Path.GetFileName(filePath);
+
+            byte[] fileData = await File.ReadAllBytesAsync(filePath);
+            string header = $"FILE:{fileName}:{fileData.Length}";
+
+            byte[] headerBytes = Encoding.UTF8.GetBytes(header);
+
+            try
+            {
+                await clientSocket.SendAsync(headerBytes, SocketFlags.None);
+                await clientSocket.SendAsync(fileData, SocketFlags.None);
+
+                // Print Msg into text box
+                PrintMsgToTextBox($"Sent file: {fileName}", true, true, fileName, fileData);
+
+            }
+            catch (SocketException ex)
+            {
+                PrintMsgToTextBox($"Socket error: {ex.Message}", false);
+            }
+            catch (Exception ex)
+            {
+                PrintMsgToTextBox($"Socket error: {ex.Message}", false);
+            }
+
+        }
+
+    } 
 }
