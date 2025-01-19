@@ -149,37 +149,44 @@ namespace ServerChatApplication
         private async Task BroadcastingMsgToClients(string receivedText, Socket excludeClient, CancellationToken token, string? fileName = null, byte[]? fileData = null)
         {
             string formattedMsg = $"{excludeClient.RemoteEndPoint} - {receivedText}";
+            var tasks = new List<Task>();
 
             foreach (var clientSocket in clientSockets)
             {
                 // Sending all exception for the client that sends the receivedText
+                // Apply parallel
                 if (clientSocket != excludeClient)
                 {
-                    if (fileData != null && fileName != null)
+                    tasks.Add(Task.Run(async () =>
                     {
-                        // Gửi header thông tin file
-                        string fileHeader = $"FILE:{fileName}:{fileData.Length}";
-                        byte[] headerBytes = Encoding.UTF8.GetBytes(fileHeader);
-                        await clientSocket.SendAsync(headerBytes, SocketFlags.None);
-
-                        // Gửi dữ liệu file theo từng chunk
-                        int chunkSize = 4096; // Kích thước chunk cố định
-                        int totalBytesSent = 0;
-                        while (totalBytesSent < fileData.Length)
+                        if (fileData != null && fileName != null)
                         {
-                            int bytesToSend = Math.Min(chunkSize, fileData.Length - totalBytesSent);
-                            await clientSocket.SendAsync(fileData.AsMemory(totalBytesSent, bytesToSend), SocketFlags.None);
-                            totalBytesSent += bytesToSend;
+                            // Gửi header thông tin file
+                            string fileHeader = $"FILE:{fileName}:{fileData.Length}";
+                            byte[] headerBytes = Encoding.UTF8.GetBytes(fileHeader);
+                            await clientSocket.SendAsync(headerBytes, SocketFlags.None);
+
+                            // Gửi dữ liệu file theo từng chunk
+                            int chunkSize = 4096; // Kích thước chunk cố định
+                            int totalBytesSent = 0;
+                            while (totalBytesSent < fileData.Length)
+                            {
+                                int bytesToSend = Math.Min(chunkSize, fileData.Length - totalBytesSent);
+                                await clientSocket.SendAsync(fileData.AsMemory(totalBytesSent, bytesToSend), SocketFlags.None);
+                                totalBytesSent += bytesToSend;
+                            }
                         }
-                    }
-                    else
-                    {
-                        NetworkStream networkStream = new NetworkStream(clientSocket);
-                        StreamWriter writerStream = new StreamWriter(networkStream);
-                        await writerStream.WriteLineAsync(formattedMsg);
-                        await writerStream.FlushAsync(token);
-                        await networkStream.FlushAsync(token);
-                    }
+                        else
+                        {
+                            NetworkStream networkStream = new NetworkStream(clientSocket);
+                            StreamWriter writerStream = new StreamWriter(networkStream);
+                            await writerStream.WriteLineAsync(formattedMsg);
+                            await writerStream.FlushAsync(token);
+                            await networkStream.FlushAsync(token);
+                        }
+                    }));
+
+                    await Task.WhenAll(tasks);
 
                 }
             }
