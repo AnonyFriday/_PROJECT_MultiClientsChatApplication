@@ -26,7 +26,7 @@ namespace ServerChatApplication
 
         private CancellationTokenSource cts;
 
-        private List<Socket> clientSockets = new List<Socket>();
+        private ConcurrentBag<Socket> clientSockets = new ConcurrentBag<Socket>();
 
         // ============================
         // === Constructor
@@ -149,9 +149,10 @@ namespace ServerChatApplication
         private async Task BroadcastingMsgToClients(string receivedText, Socket excludeClient, CancellationToken token, string? fileName = null, byte[]? fileData = null)
         {
             string formattedMsg = $"{excludeClient.RemoteEndPoint} - {receivedText}";
-            var tasks = new List<Task>();
+            var tasks = new ConcurrentBag<Task>();
 
-            foreach (var clientSocket in clientSockets)
+            // Using Parallel to send to each client socket in parallel
+            foreach (var clientSocket in clientSockets.AsParallel())
             {
                 // Sending all exception for the client that sends the receivedText
                 // Apply parallel
@@ -164,7 +165,7 @@ namespace ServerChatApplication
                             // Gửi header thông tin file
                             string fileHeader = $"FILE:{fileName}:{fileData.Length}";
                             byte[] headerBytes = Encoding.UTF8.GetBytes(fileHeader);
-                            await clientSocket.SendAsync(headerBytes, SocketFlags.None);
+                            await clientSocket.SendAsync(headerBytes, SocketFlags.None, token);
 
                             // Gửi dữ liệu file theo từng chunk
                             int chunkSize = 4096; // Kích thước chunk cố định
@@ -172,7 +173,7 @@ namespace ServerChatApplication
                             while (totalBytesSent < fileData.Length)
                             {
                                 int bytesToSend = Math.Min(chunkSize, fileData.Length - totalBytesSent);
-                                await clientSocket.SendAsync(fileData.AsMemory(totalBytesSent, bytesToSend), SocketFlags.None);
+                                await clientSocket.SendAsync(fileData.AsMemory(totalBytesSent, bytesToSend), SocketFlags.None, token);
                                 totalBytesSent += bytesToSend;
                             }
                         }
@@ -186,8 +187,8 @@ namespace ServerChatApplication
                         }
                     }));
 
+                    // Wait till sending to all clients
                     await Task.WhenAll(tasks);
-
                 }
             }
         }

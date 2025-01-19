@@ -34,9 +34,12 @@
                      Name="txtBoxInputChat"
                      BorderBrush="red"></TextBox>
             <Button 
+                    Grid.Column="1"
+                    Padding="10 5"
                     Content="Enter Chat"
                     FontWeight="DemiBold"
-                    FontSize="25" Grid.ColumnSpan="2" Height="37" Margin="678,0,0,0" VerticalAlignment="Top" Click="Button_Click"/>
+                    FontSize="25"
+                    Click="Button_Click"/>
         </Grid>
     </Grid>
 </Window>

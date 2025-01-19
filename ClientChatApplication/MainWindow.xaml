@@ -21,7 +21,7 @@
         </Label>
 
         <ScrollViewer Name="scrollViewerChat" Grid.Row="1">
-            <StackPanel x:Name="chatPanel" Orientation="Vertical" />
+            <StackPanel x:Name="chatPanel" Orientation="Vertical"/>
         </ScrollViewer>
 
         <Grid Grid.Row="2">
@@ -39,11 +39,15 @@
             <Button Grid.Column="1"
                     Content="Enter Chat"
                     FontWeight="DemiBold"
-                    FontSize="25" Click="Button_Click">
+                    Padding="10 5"
+                    FontSize="24" Click="Button_Click">
             </Button>
             <Button Grid.Column="2" 
                     Content="Attach File" 
                     FontWeight="DemiBold"
+                    FontSize="24"
+                    Padding="10 5"
+                    Margin="8 0 0 0"
                     Click="Button_AttachFile_Click" />
         </Grid>
 

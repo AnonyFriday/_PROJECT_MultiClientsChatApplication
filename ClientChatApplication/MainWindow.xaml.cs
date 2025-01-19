@@ -15,6 +15,7 @@ using Microsoft.Win32;
 using System.IO;
 using System.Reflection.PortableExecutable;
 using static System.Net.Mime.MediaTypeNames;
+using System.Xml.Linq;
 
 namespace ClientChatApplication
 {
@@ -91,7 +92,6 @@ namespace ClientChatApplication
                         // check file
                         if (textReceived.Contains("FILE:"))
                         {
-
                             // Parse header
                             var parts = textReceived.Split(':');
                             string fileName = parts[1];
@@ -198,12 +198,14 @@ namespace ClientChatApplication
                         VerticalAlignment = VerticalAlignment.Center
                     };
 
-                    btnDownload.Click += (s, e) =>
-                    {
-                        string downloadsPath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-                        string tempFilePath = System.IO.Path.Combine(downloadsPath, fileName);
-                        File.WriteAllBytes(tempFilePath, fileData);
-                    };
+                    //btnDownload.Click += (s, e) =>
+                    //{
+                    //    string downloadsPath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+                    //    string tempFilePath = System.IO.Path.Combine(downloadsPath, fileName);
+                    //    File.WriteAllBytes(tempFilePath, fileData);
+                    //};
+
+                    btnDownload.Click += (s, e) => ActionSaveFileAtLocation(fileName, fileData);
 
                     msgContainer.Children.Add(btnDownload);
                 }
@@ -213,6 +215,11 @@ namespace ClientChatApplication
             });
         }
 
+        /// <summary>
+        /// Button to send file to the group chat
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private async void Button_AttachFile_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog fileDialog = new OpenFileDialog();
@@ -246,5 +253,34 @@ namespace ClientChatApplication
 
         }
 
-    } 
+
+        /// <summary>
+        /// Action to save file at location
+        /// </summary>
+        private Action<string, byte[]> ActionSaveFileAtLocation = (fileName, fileData) =>
+        {
+            // Show save file dialog
+            SaveFileDialog fileDialog = new SaveFileDialog()
+            {
+                FileName = fileName,
+                DefaultExt = ".txt",
+                Filter = "All Files (*.*)|*.*",
+            };
+
+            bool? isConfirmSaveFile = fileDialog.ShowDialog();
+            if (isConfirmSaveFile == true)
+            {
+                string filePath = fileDialog.FileName;
+                try
+                {
+                    File.WriteAllBytesAsync(filePath, fileData);
+                    MessageBox.Show($"File {fileName} saved.\n\nLocation: ${filePath}");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"An error when downloading file. Please try again.");
+                }
+            }
+        };
+    }
 }
